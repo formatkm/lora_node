@@ -1,0 +1,13 @@
+{
+    "name": "Lora serial",
+    "keywords": "Lora, sx1278, serial",
+    "description": "A library for lora serial port",
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "frameworks": "arduino",
+    "platforms": [
+        "atmelavr"
+    ]
+}

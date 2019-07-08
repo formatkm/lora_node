@@ -1,0 +1,6 @@
+{
+    "terminal.integrated.env.osx": {
+        "PATH": "/Users/format/.platformio/penv/bin:/Users/format/.platformio/penv:/Users/format/.sdkbox/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/VMware Fusion.app/Contents/Public",
+        "PLATFORMIO_CALLER": "vscode"
+    }
+}

@@ -1,0 +1,138 @@
+#include <Arduino.h>
+
+extern SoftwareSerial loraSerial;
+extern LiquidCrystal_I2C lcd;
+//lora 控制引脚，发射，睡眠，休眠
+#define M0 7
+#define M1 8
+
+void init_lora()
+{
+    //setup lora
+    pinMode(M0, OUTPUT);
+    pinMode(M1, OUTPUT);
+
+    digitalWrite(M0, HIGH);
+    digitalWrite(M1, HIGH);
+}
+
+void e32_sleep()
+{
+    digitalWrite(M0, HIGH);
+    digitalWrite(M1, HIGH);
+    delay(10);
+}
+
+void e32_work()
+{
+    digitalWrite(M0, LOW);
+    digitalWrite(M1, LOW);
+    delay(10);
+}
+/**
+   运行命令
+   cmd  命令
+   cmd_length:命令长度，必须传入，否则sizeof是指针的大小
+   return_length： 返回数据的长度，判断是否读取结束
+*/
+char *run_cmd(char *cmd, int cmd_length, int return_length)
+{
+    e32_sleep();
+
+    loraSerial.write(cmd, cmd_length);
+    //等待
+    blink();
+
+    char buffer_[return_length];
+    int buffer_pos_ = 0;
+    while (buffer_pos_ < return_length)
+    {
+        if (loraSerial.available() > 0)
+        {
+            int ch = loraSerial.read();
+            buffer_[buffer_pos_++] = ch;
+            Serial.print(tohex(ch) + " ");
+        }
+    }
+    return buffer_;
+}
+
+void get_e32_ver()
+{
+    unsigned char hexdata[3] = {0xC3, 0xC3, 0xC3};
+    run_cmd(hexdata, sizeof(hexdata), 4);
+}
+
+/**
+   重启模块
+*/
+void e32_reset()
+{
+
+    unsigned char hexdata[3] = {0xC4, 0xC4, 0xC4};
+    run_cmd(hexdata, sizeof(hexdata), 0);
+    delay(1000);
+}
+
+void get_e32_setting()
+{
+    unsigned char hexdata[3] = {0xC1, 0xC1, 0xC1};
+    run_cmd(hexdata, sizeof(hexdata), 6);
+}
+/**
+   设置模块参数
+   addr1：地址段1(0-255)
+   addr2：地址段2(0-255)
+   channel:频段(0-31)对应频率410-441
+*/
+void e32_setting(char addr1, char addr2, char channel = 23)
+{
+
+    unsigned char hexdata[6];
+    hexdata[0] = 0xC2;
+    hexdata[1] = addr1;
+    hexdata[2] = addr2;
+    hexdata[3] = 0x1A;
+    hexdata[4] = channel;
+    hexdata[5] = 0x44;
+
+    run_cmd(hexdata, sizeof(hexdata), 6);
+}
+
+char lora_rev_buffer_[lora_rev_buffer_length];
+int buffer_pos_ = 0;
+void lora_recv_loop()
+{
+
+    while (loraSerial.available() > 0)
+    {
+        int ch = loraSerial.read();
+
+        delay(2);
+        if (ch == 10 || ch == 13 || buffer_pos_ >= lora_rev_buffer_length - 2) //处理超过缓冲区的情况
+        {
+            lora_rev_buffer_[buffer_pos_++] = '\0';
+            // blink();
+            break;
+        }
+        else
+        {
+            lora_rev_buffer_[buffer_pos_++] = ch;
+        }
+    }
+
+    if (buffer_pos_ > 2)
+    {
+        String result = String(lora_rev_buffer_);
+        Serial.println(result);
+        Serial.println("+REV:" + result);
+
+        lcd_clean(1);
+        lcd.setCursor(0, 1);
+        lcd.print(result);
+        //loraSerial.println("OK");
+    }
+    //reset lora_buffer
+    //buffer_pos_ = 0;
+    //lora_rev_buffer_[0] = '\0';
+}
