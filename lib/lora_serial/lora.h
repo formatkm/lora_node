@@ -23,7 +23,7 @@ public:
 
     void setup_recv_cb(void (*func)(char *));
 
-    void send_data(char *str);
+    void send_data(const char *str, int len);
 
     void (*function)(char *);
 
@@ -31,7 +31,8 @@ private:
     void get_e32_ver();
     void get_e32_setting();
     char lora_rev_buffer_[lora_rev_buffer_length];
-    int buffer_pos_ = 0;
+    unsigned int buffer_pos_ = 0;
+    unsigned int recv_pack_length = 11;
     void run_cmd(unsigned char *cmd, int cmd_length, int return_length);
 
     bool is_rec_working;
