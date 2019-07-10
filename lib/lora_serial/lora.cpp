@@ -168,7 +168,7 @@ void Lora::send_data(const char *str, int len)
     Serial.print("data length:");
     Serial.println(len);
 
-    unsigned pack_len = 11 + len;
+    unsigned pack_len = len;
 
     char buffer_[pack_len];
     //构造包头
@@ -180,6 +180,13 @@ void Lora::send_data(const char *str, int len)
     buffer_[5] = 2;                   //Node地址，自编号
     buffer_[6] = (0xff00 & len) >> 8; //包长度 高位
     buffer_[7] = len;                 //包长度 低位
+
+    int recv_pack_length = 0;
+    recv_pack_length = (buffer_[6] & 0xFF) << 8;
+    recv_pack_length |= buffer_[7] & 0xFF;
+
+    Serial.print("cale data length:");
+    Serial.println(recv_pack_length);
 
     //写入数据
     for (int i = 0; i < len; i++)

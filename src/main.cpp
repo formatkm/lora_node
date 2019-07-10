@@ -1,12 +1,12 @@
 #include <Arduino.h>
-
+#include <SimpleSleep.h>
 #include <LiquidCrystal_I2C.h>
 #include <Adafruit_BMP085.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x20 or 0x27 for a 16 chars and 2 line display
 
 Adafruit_BMP085 bmp;
-
+SimpleSleep Sleep;
 #include <lora.h>
 Lora lora;
 
@@ -50,7 +50,7 @@ void setup()
         ;
     }
 
-        // 初始化lora模块
+    // 初始化lora模块
     lora.init_lora();
 
     lora.e32_work();
@@ -70,9 +70,19 @@ void setup()
     keybtn.init();
     keybtn.setup_btn1_click_cb(btn1_click_cb);
 }
-
+unsigned long previousMillis = 0;
 void loop()
 {
     lora.lora_recv_loop();
     keybtn.loop();
+
+    unsigned long currentMillis = millis();
+
+    //15秒发送一次
+    if (currentMillis - previousMillis >= 1000 * 15)
+    {
+        btn1_click_cb();
+    }
+
+    Sleep.deeplyFor(1000);
 }
