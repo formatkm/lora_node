@@ -84,5 +84,5 @@ void loop()
         btn1_click_cb();
     }
 
-    Sleep.deeplyFor(1000);
+    Sleep.deeplyFor(100);
 }
