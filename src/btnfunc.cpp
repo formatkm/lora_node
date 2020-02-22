@@ -13,11 +13,13 @@ void btnClick()
 
     LED_ON
 
+    sensor.getBMP();
     String content = String(sensor.getLight());
+    content += "," + String(sensor.getBattery());
     content += "," + String(sensor.getTemp());
     content += "," + String(sensor.getPressure());
-
     lorar02.send(0xff, content);
+
     LED_OFF
 }
 

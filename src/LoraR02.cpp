@@ -20,6 +20,36 @@ byte msgCount = 0; // count of outgoing messages
 
 boolean isPing = false;
 byte pingSource;
+
+//------------------配置延时执行任务-------------------------
+void loop_loraping_cb()
+{
+    if (isPing)
+    {
+        isPing = false;
+        lorar02.send(pingSource, "pong");
+    }
+}
+Task loop_loraping_task(800, TASK_ONCE, &loop_loraping_cb, &lora_runner, false);
+
+void recv_packet_cb()
+{
+    String title = "RSSI:" + String(receiveData.rssi) + " SNR:" + String(receiveData.snr) + " 0x" + String(receiveData.sender, HEX);
+    _PP("recv:")
+    _PL(title);
+
+    if (receiveData.content == "ping")
+    {
+
+        isPing = true;
+        pingSource = receiveData.sender;
+        //启动任务，500毫秒后执行
+        loop_loraping_task.restart();
+    }
+}
+Task recv_packet_task(50, TASK_ONCE, &recv_packet_cb, &lora_runner, false);
+///////////////////////end 配置延时执行任务//////////////////////////////////////////////
+
 void LoraR02::begin()
 {
 
@@ -48,8 +78,8 @@ void LoraR02::begin()
         while (true)
             ; // if failed, do nothing
     }
-
-    //LoRa.onReceive(onReceive);
+    LoRa.disableInvertIQ();
+    LoRa.onReceive(onReceive);
     LoRa_rxMode();
     Serial.println("LoRa init succeeded.");
 }
@@ -57,15 +87,15 @@ void LoraR02::begin()
 void LoraR02::LoRa_rxMode()
 {
 
-    LoRa.disableInvertIQ(); // normal mode
-    LoRa.sleep();
-    //LoRa.receive();         // set receive mode
+    // LoRa.disableInvertIQ(); // normal mode
+    //LoRa.sleep();
+    LoRa.receive(); // set receive mode
 }
 
 void LoraR02::LoRa_txMode()
 {
     LoRa.idle(); // set standby mode
-    //LoRa.enableInvertIQ(); // active invert I and Q signals
+                 //  LoRa.enableInvertIQ(); // active invert I and Q signals
 }
 void LoraR02::send(byte destination, String outgoing)
 {
@@ -73,9 +103,9 @@ void LoraR02::send(byte destination, String outgoing)
 }
 void LoraR02::sendMessage(byte destination, String outgoing)
 {
-    LED_ON
+
     LoRa_txMode();
-    delay(20);
+    delay(10);
     LoRa.beginPacket();            // start packet
     LoRa.write(destination);       // add destination address
     LoRa.write(LOCALADRESS);       // add sender address
@@ -87,27 +117,7 @@ void LoraR02::sendMessage(byte destination, String outgoing)
     _PL("Sending " + outgoing);
     delay(10);
     LoRa_rxMode();
-    LED_OFF
 }
-//------------------配置延时执行任务-------------------------
-void recv_packet_cb()
-{
-    String title = "RSSI:" + String(receiveData.rssi) + " SNR:" + String(receiveData.snr) + " 0x" + String(receiveData.sender, HEX);
-    _PP("recv:")
-    _PL(title);
-}
-Task recv_packet_task(100, TASK_ONCE, &recv_packet_cb, &lora_runner, false);
-
-void loop_loraping_cb()
-{
-    if (isPing)
-    {
-        isPing = false;
-        lorar02.send(pingSource, "pong");
-    }
-}
-Task loop_loraping_task(800, TASK_ONCE, &loop_loraping_cb, &lora_runner, false);
-///////////////////////end 配置延时执行任务//////////////////////////////////////////////
 
 void LoraR02::onReceive(int packetSize)
 {
@@ -161,13 +171,5 @@ void LoraR02::onReceive(int packetSize)
     //必须把任务放到一个线程延时执行，否则会重启
     recv_packet_task.restart();
 
-    if (incoming == "ping")
-    {
-
-        isPing = true;
-        pingSource = sender;
-        //启动任务，500毫秒后执行
-        loop_loraping_task.restart();
-    }
     LED_OFF
 }

@@ -20,12 +20,20 @@ void Sensor::getBMP()
         Serial.println("Could not find a valid BMP085 sensor, check wiring!");
     }
 }
-unsigned int Sensor::getLight()
+int16_t Sensor::getLight()
 {
     unsigned int sensorValue = analogRead(A2);
     //_PL("light:" + String(sensorValue));
     return sensorValue;
 }
+
+int16_t Sensor::getBattery()
+{
+    unsigned int sensorValue = analogRead(A1);
+    //_PL("battery:" + String(sensorValue));
+    return sensorValue;
+}
+
 int32_t Sensor::getPressure()
 {
     return pressure;

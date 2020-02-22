@@ -5,7 +5,8 @@ class Sensor
 {
 public:
     void getBMP();
-    unsigned int getLight();
+    int16_t getLight();
+    int16_t getBattery();
     int32_t getPressure();
     float getTemp();
     float getAltitude();
