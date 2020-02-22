@@ -32,6 +32,18 @@ void loop_loraping_cb()
 }
 Task loop_loraping_task(800, TASK_ONCE, &loop_loraping_cb, &lora_runner, false);
 
+// 点亮LED2秒
+void show_led_cb();
+Task show_led_cb_task(0, TASK_ONCE, &show_led_cb, &lora_runner, false);
+void show_led_cb()
+{
+    _PL("led on")
+    LED_ON
+    delay(2000);
+    LED_OFF
+    _PL("led off")
+}
+
 void recv_packet_cb()
 {
     String title = "RSSI:" + String(receiveData.rssi) + " SNR:" + String(receiveData.snr) + " 0x" + String(receiveData.sender, HEX);
@@ -40,11 +52,14 @@ void recv_packet_cb()
 
     if (receiveData.content == "ping")
     {
-
-        isPing = true;
+        //isPing = true;
         pingSource = receiveData.sender;
         //启动任务，500毫秒后执行
-        loop_loraping_task.restart();
+        lorar02.send(pingSource, "pong");
+    }
+    else if (receiveData.content == "led")
+    {
+        show_led_cb_task.restart();
     }
 }
 Task recv_packet_task(50, TASK_ONCE, &recv_packet_cb, &lora_runner, false);
