@@ -14,6 +14,12 @@ struct _ReceiveData
     int snr;
 };
 
+struct _LoRaSendMsg
+{
+    byte dist;
+    String content;
+};
+
 class LoraR02
 {
 public:
@@ -22,9 +28,9 @@ public:
     void send(byte destination, String outgoing);
     static void LoRa_rxMode();
     static void LoRa_txMode();
+    static void sendMessage(byte destination, String outgoing);
 
 private:
     static void onReceive(int packetSize);
-    static void sendMessage(byte destination, String outgoing);
 };
 #endif

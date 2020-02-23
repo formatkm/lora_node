@@ -9,9 +9,11 @@
 class LoraTask
 {
 public:
+    void begin();
     void received(_ReceiveData data);
-    static void show_led_cb(); // 点亮LED2秒
-    static void lora_sendping_cb();
+    void send(byte destination, String outgoing);
+    static void show_led_cb();          // 点亮LED2秒
+    static void loop_lora_sending_cb(); //list发送任务
     static void recv_packet_cb();
 
 private:

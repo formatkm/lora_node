@@ -39,14 +39,15 @@ void LoraR02::begin()
             ; // if failed, do nothing
     }
     // 27 为pa_boost
-    LoRa.setTxPower(5, 27);
+    LoRa.setTxPower(15, 27);
     LoRa.setOCP(100);
 
-    //扩频因子，实际设置为12
-    LoRa.setSpreadingFactor(12);
+    //扩频因子，默认7
+    //LoRa.setSpreadingFactor(8);
     LoRa.disableInvertIQ();
     LoRa.onReceive(onReceive);
     LoRa_rxMode();
+    task.begin();
     Serial.println("LoRa init succeeded.");
 }
 
@@ -64,7 +65,7 @@ void LoraR02::LoRa_txMode()
 }
 void LoraR02::send(byte destination, String outgoing)
 {
-    LoraR02::sendMessage(destination, outgoing);
+    task.send(destination, outgoing);
 }
 void LoraR02::sendMessage(byte destination, String outgoing)
 {

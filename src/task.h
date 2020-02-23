@@ -21,6 +21,6 @@ void loop_send_cb()
     content += "," + String(sensor.getPressure());
     lorar02.send(0xff, content);
 }
-Task loop_send_task(TASK_SECOND * 15, TASK_FOREVER, &loop_send_cb, &runner);
+Task loop_send_task(TASK_SECOND * 2, TASK_FOREVER, &loop_send_cb, &runner);
 
 #endif

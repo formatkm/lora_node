@@ -1,23 +1,36 @@
 
+#include <LinkedList.h>
 #include "lora_task.h"
 extern Scheduler lora_runner;
 extern LoraR02 lorar02;
 
+LinkedList<_LoRaSendMsg *> sendList = LinkedList<_LoRaSendMsg *>();
+//QList<_LoRaSendMsg> sendList; //发送字符串链表
 _ReceiveData packetData;
 boolean isPing = false;
 unsigned long stopMillis = 0;
 
-Task lora_sendping_task(200, TASK_ONCE, LoraTask::lora_sendping_cb, &lora_runner, false);
+Task loop_lora_sending_task(1000, TASK_FOREVER, LoraTask::loop_lora_sending_cb, &lora_runner, true);
 Task show_led_cb_task(200, TASK_FOREVER, LoraTask::show_led_cb, &lora_runner, true);
 Task recv_packet_task(200, TASK_ONCE, LoraTask::recv_packet_cb, &lora_runner, false);
-void LoraTask::lora_sendping_cb()
+
+void LoraTask::begin()
 {
-    if (isPing)
+    loop_lora_sending_task.enable();
+}
+
+void LoraTask::loop_lora_sending_cb()
+{
+    if (sendList.size() > 0)
     {
-        isPing = false;
-        lorar02.send(packetData.sender, "pong");
+        while (sendList.size() > 0)
+        {
+            _LoRaSendMsg *msg = sendList.shift();
+            LoraR02::sendMessage(msg->dist, msg->content);
+        }
     }
 }
+
 void LoraTask::show_led_cb()
 {
     if (stopMillis != 0)
@@ -50,7 +63,7 @@ void LoraTask::recv_packet_cb()
         isPing = true;
 
         //启动任务，100毫秒后执行
-        lora_sendping_task.restart();
+        lorar02.send(packetData.sender, "pong");
     }
     else if (packetData.content == "led")
     {
@@ -61,6 +74,15 @@ void LoraTask::recv_packet_cb()
 void LoraTask::received(_ReceiveData data)
 {
     packetData = data;
-    // _PL("start recv_packet_task")
+    _PL("start recv_packet_task")
     recv_packet_task.restart();
+}
+
+void LoraTask::send(byte destination, String outgoing)
+{
+    // LoraR02::sendMessage(destination, outgoing);
+    _LoRaSendMsg *msg = new _LoRaSendMsg();
+    msg->dist = destination;
+    msg->content = outgoing;
+    sendList.add(msg);
 }
