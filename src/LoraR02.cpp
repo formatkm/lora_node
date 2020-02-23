@@ -3,66 +3,22 @@
 #include <LoRa.h>
 #include <TaskSchedulerDeclarations.h>
 #include "config.h"
-
+#include "lora_task.h"
 // SX1278 has the following connections:
 
 #define csPin 10   // LoRa radio chip select
 #define resetPin 9 // LoRa radio reset
 #define irqPin 2   // change for your board; must be a hardware interrupt pin
 
-extern Scheduler lora_runner;
-
+LoraTask task;
 extern LoraR02 lorar02;
 
 extern _ReceiveData receiveData;
 String outgoing;   // outgoing message
 byte msgCount = 0; // count of outgoing messages
 
-boolean isPing = false;
-byte pingSource;
-
 //------------------配置延时执行任务-------------------------
-void loop_loraping_cb()
-{
-    if (isPing)
-    {
-        isPing = false;
-        lorar02.send(pingSource, "pong");
-    }
-}
-Task loop_loraping_task(800, TASK_ONCE, &loop_loraping_cb, &lora_runner, false);
 
-// 点亮LED2秒
-void show_led_cb();
-Task show_led_cb_task(0, TASK_ONCE, &show_led_cb, &lora_runner, false);
-void show_led_cb()
-{
-    _PL("led on")
-    LED_ON
-    delay(2000);
-    LED_OFF
-    _PL("led off")
-}
-
-void recv_packet_cb()
-{
-    String title = "RSSI:" + String(receiveData.rssi) + " SNR:" + String(receiveData.snr) + " 0x" + String(receiveData.sender, HEX);
-    _PP("recv:")
-    _PL(title);
-
-    if (receiveData.content == "ping")
-    {
-        //isPing = true;
-        pingSource = receiveData.sender;
-        //启动任务，500毫秒后执行
-        lorar02.send(pingSource, "pong");
-    }
-    else if (receiveData.content == "led")
-    {
-        show_led_cb_task.restart();
-    }
-}
-Task recv_packet_task(50, TASK_ONCE, &recv_packet_cb, &lora_runner, false);
 ///////////////////////end 配置延时执行任务//////////////////////////////////////////////
 
 void LoraR02::begin()
@@ -140,7 +96,15 @@ void LoraR02::onReceive(int packetSize)
         return; // if there's no packet, return
 
     // read packet header bytes:
-    byte recipient = LoRa.read();      // recipient address
+    byte recipient = LoRa.read(); // recipient address
+    // if the recipient isn't this device or broadcast,
+    if (recipient != LOCALADRESS && recipient != 0xFF)
+    {
+        Serial.println("This message is not for me.");
+        LED_OFF
+        return; // skip rest of function
+    }
+
     byte sender = LoRa.read();         // sender address
     byte incomingMsgId = LoRa.read();  // incoming msg ID
     byte incomingLength = LoRa.read(); // incoming msg length
@@ -159,14 +123,6 @@ void LoraR02::onReceive(int packetSize)
         return; // skip rest of function
     }
 
-    // if the recipient isn't this device or broadcast,
-    if (recipient != LOCALADRESS && recipient != 0xFF)
-    {
-        Serial.println("This message is not for me.");
-        LED_OFF
-        return; // skip rest of function
-    }
-
     receiveData.rssi = LoRa.packetRssi();
     receiveData.snr = LoRa.getSNR();
     receiveData.sender = sender;
@@ -175,16 +131,16 @@ void LoraR02::onReceive(int packetSize)
     receiveData.length = incomingLength;
     receiveData.content = incoming;
     // if message is for this device, or broadcast, print details:
-    _PL("Received from: 0x" + String(receiveData.sender, HEX));
-    _PL("Sent to: 0x" + String(receiveData.dist, HEX));
-    _PL("Message ID: " + String(receiveData.id));
-    _PL("Message length: " + String(receiveData.length));
+    _PP("RSSI:" + String(receiveData.rssi));
+    _PP(" SNR:" + String(receiveData.snr));
+    _PP(" from: 0x" + String(receiveData.sender, HEX));
+    _PP(" to: 0x" + String(receiveData.dist, HEX));
+    _PP(" ID: " + String(receiveData.id));
+    _PL(" length: " + String(receiveData.length));
     _PL("Message: " + receiveData.content);
-    _PL("RSSI: " + String(receiveData.rssi));
-    _PL("Snr: " + String(receiveData.snr));
     _PL("");
     //必须把任务放到一个线程延时执行，否则会重启
-    recv_packet_task.restart();
+    task.received(receiveData);
 
     LED_OFF
 }
