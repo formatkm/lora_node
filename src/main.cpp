@@ -27,8 +27,9 @@ void setup()
     lorar02.begin();
     btnFunc.begin();
     runner.enableAll(true);
-    lora_runner.enableAll(true);
+    // lora_runner.enableAll(true);
     LED_OFF
+    _PL("running....")
 }
 //unsigned long previousMillis = 0;
 void loop()

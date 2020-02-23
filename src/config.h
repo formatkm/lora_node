@@ -2,7 +2,7 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-//#define _DEBUG_
+#define _DEBUG_
 
 #define LOCALADRESS 0x02 // address of this device
 #define VERSION "0.0.20"

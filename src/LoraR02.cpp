@@ -29,26 +29,21 @@ void LoraR02::begin()
     // override the default CS, reset, and IRQ pins (optional)
     LoRa.setPins(csPin, resetPin, irqPin); // set CS, reset, IRQ pin
 
-    //信号带宽 越小越远
-    // LoRa.setSignalBandwidth(7.8E3);
-    //扩频因子，实际设置为12
-    //LoRa.setSpreadingFactor(14);
-
     //编码率
     //LoRa.setCodingRate4(9);
-    //#ifdef SERVER // 网关模块功率最大
-    //LoRa.setTxPower(20);
-    //LoRa.setOCP(140);
-    //#else
-    //LoRa.setTxPower(4);
-    //LoRa.setOCP(50);
-    //#endif
+
     if (!LoRa.begin(FREQUENCY))
     { // initialize ratio at 915 MHz
         Serial.println("LoRa init failed. Check your connections.");
         while (true)
             ; // if failed, do nothing
     }
+    // 27 为pa_boost
+    LoRa.setTxPower(5, 27);
+    LoRa.setOCP(100);
+
+    //扩频因子，实际设置为12
+    LoRa.setSpreadingFactor(12);
     LoRa.disableInvertIQ();
     LoRa.onReceive(onReceive);
     LoRa_rxMode();
@@ -57,7 +52,6 @@ void LoraR02::begin()
 
 void LoraR02::LoRa_rxMode()
 {
-
     // LoRa.disableInvertIQ(); // normal mode
     //LoRa.sleep();
     LoRa.receive(); // set receive mode
@@ -66,7 +60,7 @@ void LoraR02::LoRa_rxMode()
 void LoraR02::LoRa_txMode()
 {
     LoRa.idle(); // set standby mode
-                 //  LoRa.enableInvertIQ(); // active invert I and Q signals
+    //  LoRa.enableInvertIQ(); // active invert I and Q signals
 }
 void LoraR02::send(byte destination, String outgoing)
 {
@@ -76,7 +70,7 @@ void LoraR02::sendMessage(byte destination, String outgoing)
 {
 
     LoRa_txMode();
-    delay(10);
+    //delay(10);
     LoRa.beginPacket();            // start packet
     LoRa.write(destination);       // add destination address
     LoRa.write(LOCALADRESS);       // add sender address
@@ -85,8 +79,10 @@ void LoraR02::sendMessage(byte destination, String outgoing)
     LoRa.print(outgoing);          // add payload
     LoRa.endPacket();              // finish packet and send it
     msgCount++;                    // increment message ID
-    _PL("Sending " + outgoing);
-    delay(10);
+    _PP("[Send] ID:" + String(msgCount));
+    _PP(" to:0x" + String(destination, HEX));
+    _PL(" ,payload: " + outgoing);
+    //delay(10);
     LoRa_rxMode();
 }
 
@@ -131,14 +127,14 @@ void LoraR02::onReceive(int packetSize)
     receiveData.length = incomingLength;
     receiveData.content = incoming;
     // if message is for this device, or broadcast, print details:
-    _PP("RSSI:" + String(receiveData.rssi));
-    _PP(" SNR:" + String(receiveData.snr));
-    _PP(" from: 0x" + String(receiveData.sender, HEX));
-    _PP(" to: 0x" + String(receiveData.dist, HEX));
-    _PP(" ID: " + String(receiveData.id));
-    _PL(" length: " + String(receiveData.length));
-    _PL("Message: " + receiveData.content);
-    _PL("");
+    // _PP("[Recv]RSSI:" + String(receiveData.rssi));
+    // _PP(" SNR:" + String(receiveData.snr));
+    // _PP(" from: 0x" + String(receiveData.sender, HEX));
+    // _PP(" to: 0x" + String(receiveData.dist, HEX));
+    // _PP(" ID: " + String(receiveData.id));
+    // _PL(" length: " + String(receiveData.length));
+    // _PL("Message: " + receiveData.content);
+    // _PL("");
     //必须把任务放到一个线程延时执行，否则会重启
     task.received(receiveData);
 
