@@ -6,6 +6,7 @@
 Adafruit_BMP085 bmp;
 void Sensor::getBMP()
 {
+
     if (bmp.begin())
     {
         temp = bmp.readTemperature();
@@ -22,6 +23,7 @@ void Sensor::getBMP()
 }
 int16_t Sensor::getLight()
 {
+
     unsigned int sensorValue = analogRead(A2);
     //_PL("light:" + String(sensorValue));
     return sensorValue;
@@ -29,6 +31,7 @@ int16_t Sensor::getLight()
 
 int16_t Sensor::getBattery()
 {
+
     unsigned int sensorValue = analogRead(A1);
     //_PL("battery:" + String(sensorValue));
     return sensorValue;

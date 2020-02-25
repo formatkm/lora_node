@@ -5,11 +5,17 @@
 #include "config.h"
 #include "lora_task.h"
 // SX1278 has the following connections:
-
+#ifdef DESP8266
+// wemos mini d1
+#define csPin 15   // LoRa radio chip select
+#define resetPin 0 // LoRa radio reset
+#define irqPin 2   // change for your board; must be a hardware interrupt pin
+#else              //*************/
+// arduino nano
 #define csPin 10   // LoRa radio chip select
 #define resetPin 9 // LoRa radio reset
 #define irqPin 2   // change for your board; must be a hardware interrupt pin
-
+#endif
 LoraTask task;
 extern LoraR02 lorar02;
 
@@ -70,6 +76,7 @@ void LoraR02::send(byte destination, String outgoing)
 void LoraR02::sendMessage(byte destination, String outgoing)
 {
 
+    //_PL("begin send.")
     LoRa_txMode();
     //delay(10);
     LoRa.beginPacket();            // start packet

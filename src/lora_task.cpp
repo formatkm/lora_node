@@ -27,6 +27,8 @@ void LoraTask::loop_lora_sending_cb()
         {
             _LoRaSendMsg *msg = sendList.shift();
             LoraR02::sendMessage(msg->dist, msg->content);
+            //删除指针
+            delete msg;
         }
     }
 }
@@ -80,7 +82,8 @@ void LoraTask::received(_ReceiveData data)
 
 void LoraTask::send(byte destination, String outgoing)
 {
-    // LoraR02::sendMessage(destination, outgoing);
+    //_PL("add to send list.")
+
     _LoRaSendMsg *msg = new _LoRaSendMsg();
     msg->dist = destination;
     msg->content = outgoing;

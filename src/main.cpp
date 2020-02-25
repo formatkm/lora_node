@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include <SimpleSleep.h>
 
 #include <TaskScheduler.h>
 #include "config.h"
@@ -7,7 +6,6 @@
 #include "sensor.h"
 #include "btnfunc.h"
 
-SimpleSleep Sleep;
 Scheduler lora_runner;
 Scheduler runner;
 Sensor sensor;
@@ -17,15 +15,21 @@ _ReceiveData receiveData;
 #include "task.h"
 void setup()
 {
-    pinMode(LED_PIN, OUTPUT);
+
     Serial.begin(115200);
     while (!Serial)
     {
         ;
     }
-
-    lorar02.begin();
+    Serial.println("booting....");
+#ifdef DESP8266
+    ESP8266WiFiClass::preinitWiFiOff();
+#endif
+    pinMode(LED_PIN, OUTPUT);
+    analogReference(DEFAULT); //调用板载1.1V基准源
     btnFunc.begin();
+    lorar02.begin();
+
     runner.enableAll(true);
     // lora_runner.enableAll(true);
     LED_OFF
