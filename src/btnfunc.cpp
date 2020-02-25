@@ -2,7 +2,7 @@
 #include "OneButton.h"
 #include "btnfunc.h"
 #include "sensor.h"
-#include "lorar02.h"
+#include "LoraR02.h"
 #include "config.h"
 
 extern Sensor sensor;

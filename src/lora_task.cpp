@@ -1,18 +1,20 @@
 
 #include <LinkedList.h>
 #include "lora_task.h"
+#include "sensor.h"
 extern Scheduler lora_runner;
 extern LoraR02 lorar02;
+extern Sensor sensor;
 
 LinkedList<_LoRaSendMsg *> sendList = LinkedList<_LoRaSendMsg *>();
-//QList<_LoRaSendMsg> sendList; //发送字符串链表
+
 _ReceiveData packetData;
 boolean isPing = false;
 unsigned long stopMillis = 0;
 
-Task loop_lora_sending_task(1000, TASK_FOREVER, LoraTask::loop_lora_sending_cb, &lora_runner, true);
+Task loop_lora_sending_task(700, TASK_FOREVER, LoraTask::loop_lora_sending_cb, &lora_runner, true);
 Task show_led_cb_task(200, TASK_FOREVER, LoraTask::show_led_cb, &lora_runner, true);
-Task recv_packet_task(200, TASK_ONCE, LoraTask::recv_packet_cb, &lora_runner, false);
+Task recv_packet_task(100, TASK_ONCE, LoraTask::recv_packet_cb, &lora_runner, false);
 
 void LoraTask::begin()
 {
@@ -62,14 +64,23 @@ void LoraTask::recv_packet_cb()
 
     if (packetData.content == "ping")
     {
-        isPing = true;
-
-        //启动任务，100毫秒后执行
         lorar02.send(packetData.sender, "pong");
     }
     else if (packetData.content == "led")
     {
         stopMillis = millis() + 2000;
+    }
+    else if (packetData.content == "get")
+    {
+        LED_ON
+        sensor.getBMP();
+        String content = String(sensor.getLight());
+        content += "," + String(sensor.getBattery());
+        content += "," + String(sensor.getTemp());
+        content += "," + String(sensor.getPressure());
+        lorar02.send(0xff, content);
+
+        LED_OFF
     }
 }
 
@@ -83,7 +94,6 @@ void LoraTask::received(_ReceiveData data)
 void LoraTask::send(byte destination, String outgoing)
 {
     //_PL("add to send list.")
-
     _LoRaSendMsg *msg = new _LoRaSendMsg();
     msg->dist = destination;
     msg->content = outgoing;
