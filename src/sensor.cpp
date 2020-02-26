@@ -24,9 +24,12 @@ void Sensor::getBMP()
 }
 int16_t Sensor::getLight()
 {
-
+    digitalWrite(LIGHTSENSOR_PIN, HIGH);
+    delay(5);
     unsigned int sensorValue = analogRead(A2);
     //_PL("light:" + String(sensorValue));
+
+    digitalWrite(LIGHTSENSOR_PIN, LOW);
     return sensorValue;
 }
 

@@ -45,8 +45,8 @@ void LoraR02::begin()
             ; // if failed, do nothing
     }
     // 27 为pa_boost
-    LoRa.setTxPower(15, 27);
-    LoRa.setOCP(100);
+    LoRa.setTxPower(18, 27);
+    LoRa.setOCP(140);
 
     //扩频因子，默认7
     //LoRa.setSpreadingFactor(8);

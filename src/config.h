@@ -10,6 +10,7 @@
 #define FREQUENCY 421E6
 
 #define LED_PIN 6
+#define LIGHTSENSOR_PIN 4
 
 #define LED_ON digitalWrite(LED_PIN, HIGH);
 #define LED_OFF digitalWrite(LED_PIN, LOW);

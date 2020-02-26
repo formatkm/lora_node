@@ -1,5 +1,5 @@
 #include <Arduino.h>
-
+#include "SimpleSleep.h"
 #include <TaskScheduler.h>
 #include "config.h"
 #include "LoraR02.h"
@@ -26,6 +26,10 @@ void setup()
     ESP8266WiFiClass::preinitWiFiOff();
 #endif
     pinMode(LED_PIN, OUTPUT);
+    // 光敏电阻供电pin
+    pinMode(LIGHTSENSOR_PIN, OUTPUT);
+    digitalWrite(LIGHTSENSOR_PIN, LOW);
+
     analogReference(DEFAULT); //调用板载1.1V基准源
     btnFunc.begin();
     lorar02.begin();
