@@ -1,8 +1,10 @@
 
+#include "config.h"
+#include <TaskSchedulerDeclarations.h>
 #include <LinkedList.h>
 #include "lora_task.h"
 #include "sensor.h"
-extern Scheduler lora_runner;
+extern Scheduler runner;
 extern LoraR02 lorar02;
 extern Sensor sensor;
 
@@ -12,9 +14,9 @@ _ReceiveData packetData;
 boolean isPing = false;
 unsigned long stopMillis = 0;
 
-Task loop_lora_sending_task(700, TASK_FOREVER, LoraTask::loop_lora_sending_cb, &lora_runner, true);
-Task show_led_cb_task(200, TASK_FOREVER, LoraTask::show_led_cb, &lora_runner, true);
-Task recv_packet_task(100, TASK_ONCE, LoraTask::recv_packet_cb, &lora_runner, false);
+Task loop_lora_sending_task(700, TASK_FOREVER, LoraTask::loop_lora_sending_cb, &runner, true);
+Task show_led_cb_task(200, TASK_FOREVER, LoraTask::show_led_cb, &runner, true);
+Task recv_packet_task(100, TASK_ONCE, LoraTask::recv_packet_cb, &runner, false);
 
 void LoraTask::begin()
 {

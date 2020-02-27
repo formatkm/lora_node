@@ -2,8 +2,6 @@
 #define __task_h
 
 #include "Arduino.h"
-#include <TaskSchedulerDeclarations.h>
-
 #include "config.h"
 #include "LoraR02.h"
 #include "sensor.h"

@@ -2,9 +2,7 @@
 #define __LORA_TASK_H
 
 #include "Arduino.h"
-#include <TaskSchedulerDeclarations.h>
 #include "LoraR02.h"
-#include "config.h"
 
 class LoraTask
 {

@@ -16,9 +16,9 @@
 #define resetPin 9 // LoRa radio reset
 #define irqPin 2   // change for your board; must be a hardware interrupt pin
 #endif
-LoraTask task;
-extern LoraR02 lorar02;
 
+extern LoraR02 lorar02;
+extern LoraTask task;
 extern _ReceiveData receiveData;
 String outgoing;   // outgoing message
 byte msgCount = 0; // count of outgoing messages

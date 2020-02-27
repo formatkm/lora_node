@@ -12,6 +12,8 @@
 #define LED_PIN 6
 #define LIGHTSENSOR_PIN 4
 
+#define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between tasks if no callback methods were invoked during the pass
+
 #define LED_ON digitalWrite(LED_PIN, HIGH);
 #define LED_OFF digitalWrite(LED_PIN, LOW);
 
