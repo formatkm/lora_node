@@ -11,12 +11,13 @@ public:
     float getTemp();
     float getAltitude();
 
+    float Read_Volts(void);
+    int16_t Read_Light(void);
+
 private:
     int32_t pressure;
     float temp;
     float altitude;
-
-    float Read_Volts(void);
 };
 
 #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)

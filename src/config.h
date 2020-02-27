@@ -2,10 +2,10 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-#define _DEBUG_
+//#define _DEBUG_
 
-#define LOCALADRESS 0x02 // address of this device
-#define VERSION "0.0.20"
+#define LOCALADRESS 0xBB // address of this device
+#define VERSION "0.0.26"
 // 定义使用频率
 #define FREQUENCY 421E6
 

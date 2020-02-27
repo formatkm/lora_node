@@ -1,5 +1,5 @@
 // Cooperative multitasking library for Arduino
-// Copyright (c) 2015-2017 Anatoli Arkhipenko
+// Copyright (c) 2015-2019 Anatoli Arkhipenko
 //
 // Changelog:
 // v1.0.0:
@@ -145,8 +145,35 @@
 //
 // v3.0.2:
 //    2018-11-11 - bug: default constructor is ambiguous when Status Request objects are enabled (github issue #65 & #68)
+//
+// v3.0.3:
+//    2019-06-13 - feature: custom sleep callback method: setSleepMethod() - ability to dynamically control idle sleep for various microcontrollers
+//               - feature: support for MSP430 and MSP432 boards (pull request #75: big thanks to Guillaume Pirou, https://github.com/elominp)
+//               - officially discontinued support for offile documentation in favor of updating the Wiki pages
+//
+// v3.1.0:
+//    2020-01-07 - feature: added 4 cpu load monitoring methods for _TASK_TIMECRITICAL compilation option
+//
+// v3.1.1:
+//    2020-01-09 - update: more precise CPU load measuring. Ability to define idle sleep threshold for ESP chips
+//
+// v3.1.2:
+//    2020-01-17 - bug fix: corrected external forward definitions of millis() and micros
+// 
+// v3.1.3:
+//    2020-01-30 - bug fix: _TASK_DEFINE_MILLIS to force forward definition of millis and micros. Not defined by default. 
+//    2020-02-16 - bug fix: add 'virtual' to the Task destructor definition (issue #86)
+
 
 #include <Arduino.h>
+
+#ifdef _TASK_DEFINE_MILLIS
+extern "C" {
+    unsigned long micros(void);
+    unsigned long millis(void);
+}
+#endif
+
 #include "TaskSchedulerDeclarations.h"
 
 #ifndef _TASKSCHEDULER_H_
@@ -157,7 +184,7 @@
 // and should be used in the main sketch depending on the functionality required
 //
 // #define _TASK_TIMECRITICAL      // Enable monitoring scheduling overruns
-// #define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between tasks if no callback methods were invoked during the pass
+// #define _TASK_SLEEP_ON_IDLE_RUN // Enable 1 ms SLEEP_IDLE powerdowns between runs if no callback methods were invoked during the pass
 // #define _TASK_STATUS_REQUEST    // Compile with support for StatusRequest functionality - triggering tasks on status change events in addition to time only
 // #define _TASK_WDT_IDS           // Compile with support for wdt control points and task ids
 // #define _TASK_LTS_POINTER       // Compile with support for local task storage pointer
@@ -165,9 +192,10 @@
 // #define _TASK_MICRO_RES         // Support for microsecond resolution
 // #define _TASK_STD_FUNCTION      // Support for std::function (ESP8266 ONLY)
 // #define _TASK_DEBUG             // Make all methods and variables public for debug purposes
-// #define _TASK_INLINE		       // Make all methods "inline" - needed to support some multi-tab, multi-file implementations
+// #define _TASK_INLINE            // Make all methods "inline" - needed to support some multi-tab, multi-file implementations
 // #define _TASK_TIMEOUT           // Support for overall task timeout
 // #define _TASK_OO_CALLBACKS      // Support for callbacks via inheritance
+// #define _TASK_DEFINE_MILLIS     // Force forward declaration of millis() and micros() "C" style
 
  #ifdef _TASK_MICRO_RES
 
@@ -181,28 +209,10 @@
 
 
 #ifdef _TASK_SLEEP_ON_IDLE_RUN
+#include "TaskSchedulerSleepMethods.h"
 
-#ifdef ARDUINO_ARCH_AVR
-#include <avr/sleep.h>
-#include <avr/power.h>
-#endif  // ARDUINO_ARCH_AVR
-
-#ifdef ARDUINO_ARCH_ESP8266
-#define _TASK_ESP8266_DLY_THRESHOLD 200L
-extern "C" {
-#include "user_interface.h"
-}
-#endif //ARDUINO_ARCH_ESP8266
-
-#ifdef ARDUINO_ARCH_ESP32
-#define _TASK_ESP8266_DLY_THRESHOLD 200L
-#warning _TASK_SLEEP_ON_IDLE_RUN for ESP32 cannot use light sleep mode but a standard delay for 1 ms
-#endif  // ARDUINO_ARCH_ESP32
-
-#ifdef ARDUINO_ARCH_STM32F1
-#include <libmaple/pwr.h>
-#include <libmaple/scb.h>
-#endif  // ARDUINO_ARCH_STM32F1
+  Scheduler* iSleepScheduler;
+  SleepCallback iSleepMethod;
 
 #endif  // _TASK_SLEEP_ON_IDLE_RUN
 
@@ -323,7 +333,7 @@ void StatusRequest::signalComplete(int aStatus) {
  *  If aStatusRequest is NULL, request for waiting is ignored, and the waiting task is not enabled.
  */
 void Task::waitFor(StatusRequest* aStatusRequest, unsigned long aInterval, long aIterations) {
-	iStatusRequest = aStatusRequest;
+    iStatusRequest = aStatusRequest;
     if ( iStatusRequest != NULL ) { // assign internal StatusRequest var and check if it is not NULL
         setIterations(aIterations);
         setInterval(aInterval);
@@ -333,7 +343,7 @@ void Task::waitFor(StatusRequest* aStatusRequest, unsigned long aInterval, long 
 }
 
 void Task::waitForDelayed(StatusRequest* aStatusRequest, unsigned long aInterval, long aIterations) {
-	iStatusRequest = aStatusRequest;
+    iStatusRequest = aStatusRequest;
     if ( iStatusRequest != NULL ) { // assign internal StatusRequest var and check if it is not NULL
         setIterations(aIterations);
         if ( aInterval ) setInterval(aInterval);  // For the dealyed version only set the interval if it was not a zero
@@ -399,10 +409,10 @@ void Task::reset() {
     iMyStatusRequest.signalComplete();
 #endif  // _TASK_STATUS_REQUEST
 
-#ifdef	_TASK_TIMEOUT
-	iTimeout = 0;
-	iStarttime = 0;
-	iStatus.timeout = false;
+#ifdef  _TASK_TIMEOUT
+    iTimeout = 0;
+    iStarttime = 0;
+    iStatus.timeout = false;
 #endif  // _TASK_TIMEOUT
 }
 
@@ -495,7 +505,7 @@ void Task::enable() {
         iPreviousMillis = _TASK_TIME_FUNCTION() - (iDelay = iInterval);
 
 #ifdef _TASK_TIMEOUT
-			resetTimeout();
+            resetTimeout();
 #endif // _TASK_TIMEOUT
 
 #ifdef _TASK_STATUS_REQUEST
@@ -525,28 +535,28 @@ void Task::enableDelayed(unsigned long aDelay) {
 
 #ifdef _TASK_TIMEOUT
 void Task::setTimeout(unsigned long aTimeout, bool aReset) {
-	iTimeout = aTimeout;
-	if (aReset) resetTimeout();
+    iTimeout = aTimeout;
+    if (aReset) resetTimeout();
 }
 
 void Task::resetTimeout() {
-	iStarttime = _TASK_TIME_FUNCTION();
-	iStatus.timeout = false;
+    iStarttime = _TASK_TIME_FUNCTION();
+    iStatus.timeout = false;
 }
 
 unsigned long Task::getTimeout() {
-	return iTimeout;
+    return iTimeout;
 }
 
 long Task::untilTimeout() {
     if ( iTimeout ) {
         return ( (long) (iStarttime + iTimeout) - (long) _TASK_TIME_FUNCTION() );
-	}
-	return -1;
+    }
+    return -1;
 }
 
 bool Task::timedOut() {
-	return iStatus.timeout;
+    return iStatus.timeout;
 }
 
 #endif // _TASK_TIMEOUT
@@ -619,7 +629,7 @@ bool Task::disable() {
 
 void Task::restart() {
     enable();
-	iIterations = iSetIterations;
+    iIterations = iSetIterations;
 }
 
 /** Restarts task delayed
@@ -627,7 +637,7 @@ void Task::restart() {
  */
 void Task::restartDelayed(unsigned long aDelay) {
     enableDelayed(aDelay);
-	iIterations = iSetIterations;
+    iIterations = iSetIterations;
 }
 
 bool Task::isFirstIteration() { return (iRunCounter <= 1); }
@@ -665,6 +675,9 @@ void* Task::getLtsPointer() { return iLTS; }
  */
 Scheduler::Scheduler() {
     init();
+#ifdef _TASK_SLEEP_ON_IDLE_RUN
+    setSleepMethod(&SleepMethod);
+#endif // _TASK_SLEEP_ON_IDLE_RUN
 }
 
 /*
@@ -688,6 +701,10 @@ void Scheduler::init() {
 #ifdef _TASK_SLEEP_ON_IDLE_RUN
     allowSleep(true);
 #endif  // _TASK_SLEEP_ON_IDLE_RUN
+
+#ifdef _TASK_TIMECRITICAL
+    cpuLoadReset();
+#endif  // _TASK_TIMECRITICAL
 }
 
 /** Appends task aTask to the tail of the execution chain.
@@ -720,7 +737,7 @@ void Scheduler::init() {
  * @param &aTask - reference to the task to be deleted from the chain
  */
 void Scheduler::deleteTask(Task& aTask) {
-	aTask.iScheduler = NULL;
+    aTask.iScheduler = NULL;
     if (aTask.iPrev == NULL) {
         if (aTask.iNext == NULL) {
             iFirst = NULL;
@@ -808,7 +825,7 @@ void Scheduler::allowSleep(bool aState) {
 #endif  // ARDUINO_ARCH_ESP8266
 
 #ifdef ARDUINO_ARCH_ESP32
-	// TO-DO; find a suitable replacement for ESP32 if possible.
+    // TO-DO; find a suitable replacement for ESP32 if possible.
 #endif  // ARDUINO_ARCH_ESP32
 }
 #endif  // _TASK_SLEEP_ON_IDLE_RUN
@@ -855,10 +872,30 @@ Task& Scheduler::currentTask() { return *iCurrent; }
 #ifdef _TASK_LTS_POINTER
 void* Scheduler::currentLts() { return iCurrent->iLTS; }
 #endif  // _TASK_LTS_POINTER
+
 #ifdef _TASK_TIMECRITICAL
 bool Scheduler::isOverrun() { return (iCurrent->iOverrun < 0); }
+
+void Scheduler::cpuLoadReset() {
+    iCPUStart = micros();
+    iCPUCycle = 0;
+    iCPUIdle = 0;
+}
+
+unsigned long Scheduler::getCpuLoadTotal() {
+    return (micros() - iCPUStart);
+}
 #endif  // _TASK_TIMECRITICAL
 
+    
+#ifdef _TASK_SLEEP_ON_IDLE_RUN
+void  Scheduler::setSleepMethod( SleepCallback aCallback ) {
+    if ( aCallback != NULL ) {
+        iSleepScheduler = this;
+        iSleepMethod = aCallback;
+    }
+}
+#endif  // _TASK_SLEEP_ON_IDLE_RUN
 
 
 /** Makes one pass through the execution chain.
@@ -867,19 +904,22 @@ bool Scheduler::isOverrun() { return (iCurrent->iOverrun < 0); }
  * Different pseudo "priority" could be achieved
  * by running task more frequently
  */
+
 bool Scheduler::execute() {
     bool     idleRun = true;
     register unsigned long m, i;  // millis, interval;
+    unsigned long tStart, tFinish;
 
-#ifdef _TASK_SLEEP_ON_IDLE_RUN
-#if defined (ARDUINO_ARCH_ESP8266) || defined (ARDUINO_ARCH_ESP32)
-      unsigned long t1 = micros();
-      unsigned long t2 = 0;
-#endif  // ARDUINO_ARCH_ESP8266
-#endif // _TASK_SLEEP_ON_IDLE_RUN
+#ifdef _TASK_TIMECRITICAL
+    register unsigned long tPassStart;
+    register unsigned long tTaskStart, tTaskFinish;
+    unsigned long tIdleStart = 0;
+#endif  // _TASK_TIMECRITICAL
 
-	Task *nextTask;  // support for deleting the task in the onDisable method
+    Task *nextTask;  // support for deleting the task in the onDisable method
     iCurrent = iFirst;
+
+    tStart = micros();  // Scheduling full pass start time in microseconds. 
 
 #ifdef _TASK_PRIORITY
     // If lower priority scheduler does not have a single task in the chain
@@ -888,15 +928,19 @@ bool Scheduler::execute() {
         iCurrentScheduler = this;
 #endif  // _TASK_PRIORITY
 
-
     while (iCurrent) {
+
+#ifdef _TASK_TIMECRITICAL
+        tPassStart = micros();
+        tTaskStart = tTaskFinish = 0; 
+#endif  // _TASK_TIMECRITICAL
 
 #ifdef _TASK_PRIORITY
     // If scheduler for higher priority tasks is set, it's entire chain is executed on every pass of the base scheduler
         if (iHighPriority) idleRun = iHighPriority->execute() && idleRun;
         iCurrentScheduler = this;
 #endif  // _TASK_PRIORITY
-		nextTask = iCurrent->iNext;
+        nextTask = iCurrent->iNext;
         do {
             if ( iCurrent->iStatus.enabled ) {
 
@@ -914,12 +958,12 @@ bool Scheduler::execute() {
                 i = iCurrent->iInterval;
 
 #ifdef _TASK_TIMEOUT
-	// Disable task on a timeout
-				if ( iCurrent->iTimeout && (m - iCurrent->iStarttime > iCurrent->iTimeout) ) {
-					iCurrent->iStatus.timeout = true;
-					iCurrent->disable();
+    // Disable task on a timeout
+                if ( iCurrent->iTimeout && (m - iCurrent->iStarttime > iCurrent->iTimeout) ) {
+                    iCurrent->iStatus.timeout = true;
+                    iCurrent->disable();
                     break;
-				}
+                }
 #endif // _TASK_TIMEOUT
 
 #ifdef  _TASK_STATUS_REQUEST
@@ -953,6 +997,10 @@ bool Scheduler::execute() {
 #endif  // _TASK_TIMECRITICAL
 
                 iCurrent->iDelay = i;
+                
+#ifdef _TASK_TIMECRITICAL
+                tTaskStart = micros();
+#endif  // _TASK_TIMECRITICAL
 
 #ifdef _TASK_OO_CALLBACKS
                 idleRun = !iCurrent->Callback();
@@ -963,52 +1011,49 @@ bool Scheduler::execute() {
                 }
 #endif // _TASK_OO_CALLBACKS
 
+#ifdef _TASK_TIMECRITICAL
+                tTaskFinish = micros();
+#endif  // _TASK_TIMECRITICAL
+
             }
         } while (0);    //guaranteed single run - allows use of "break" to exit
+
         iCurrent = nextTask;
+        
+        
+#ifdef _TASK_TIMECRITICAL
+        iCPUCycle += ( (micros() - tPassStart) - (tTaskFinish - tTaskStart) );
+#endif  // _TASK_TIMECRITICAL
+        
 #if defined (ARDUINO_ARCH_ESP8266) || defined (ARDUINO_ARCH_ESP32)
         yield();
-#endif  // ARDUINO_ARCH_ESP8266
+#endif  // ARDUINO_ARCH_ESPxx
     }
+
+    tFinish = micros(); // Scheduling pass end time in microseconds.
+
 
 #ifdef _TASK_SLEEP_ON_IDLE_RUN
+
     if (idleRun && iAllowSleep) {
+        if ( iSleepScheduler == this ) { // only one scheduler should make the MC go to sleep. 
+            if ( iSleepMethod != NULL ) {
+                
+#ifdef _TASK_TIMECRITICAL
+                tIdleStart = micros();
+#endif  // _TASK_TIMECRITICAL
 
-#ifdef ARDUINO_ARCH_AVR // Could be used only for AVR-based boards.
-      set_sleep_mode(SLEEP_MODE_IDLE);
-      sleep_enable();
-      /* Now enter sleep mode. */
-      sleep_mode();
-
-      /* The program will continue from here after the timer timeout ~1 ms */
-      sleep_disable(); /* First thing to do is disable sleep. */
-#endif // ARDUINO_ARCH_AVR
-
-#ifdef CORE_TEENSY
-    asm("wfi");
-#endif //CORE_TEENSY
-
-#ifdef ARDUINO_ARCH_ESP8266
-// to do: find suitable sleep function for esp8266
-      t2 = micros() - t1;
-      if (t2 < _TASK_ESP8266_DLY_THRESHOLD) delay(1);   // ESP8266 implementation of delay() uses timers and yield
-#endif  // ARDUINO_ARCH_ESP8266
-
-#ifdef ARDUINO_ARCH_ESP32
-//TODO: find a correct light sleep implementation for ESP32
-    // esp_sleep_enable_timer_wakeup(1000); //1 ms
-    // int ret= esp_light_sleep_start();
-      t2 = micros() - t1;
-      if (t2 < _TASK_ESP8266_DLY_THRESHOLD) delay(1);
-#endif  // ARDUINO_ARCH_ESP32
-
-#ifdef ARDUINO_ARCH_STM32F1
-	  // Now go into stop mode, wake up on interrupt.
-	  // Systick interrupt will run every 1 milliseconds.
-	  asm("    wfi");
-#endif  // ARDUINO_ARCH_STM32
-
+                (*iSleepMethod)( tFinish-tStart );
+                
+#ifdef _TASK_TIMECRITICAL
+                iCPUIdle += (micros() - tIdleStart);
+#endif  // _TASK_TIMECRITICAL
+            }
+        }
     }
+    
+
+
 #endif  // _TASK_SLEEP_ON_IDLE_RUN
 
     return (idleRun);

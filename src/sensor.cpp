@@ -1,9 +1,14 @@
-#include <Arduino.h>
-#include <Adafruit_BMP085.h>
-#include "sensor.h"
 #include "config.h"
+#include <Arduino.h>
+#include <TaskSchedulerDeclarations.h>
+#include <Adafruit_BMP085.h>
+
+#include "sensor.h"
 
 Adafruit_BMP085 bmp;
+
+extern Scheduler runner;
+//extern Sensor sensor;
 
 void Sensor::getBMP()
 {
@@ -24,6 +29,11 @@ void Sensor::getBMP()
 }
 int16_t Sensor::getLight()
 {
+    return Read_Light();
+}
+
+int16_t Sensor::Read_Light()
+{
     digitalWrite(LIGHTSENSOR_PIN, HIGH);
     delay(5);
     unsigned int sensorValue = analogRead(A2);
@@ -35,10 +45,7 @@ int16_t Sensor::getLight()
 
 float Sensor::getBattery()
 {
-
-    float sensorValue = Read_Volts();
-    //_PL("battery:" + String(sensorValue));
-    return sensorValue;
+    return Read_Volts();
 }
 
 int32_t Sensor::getPressure()
